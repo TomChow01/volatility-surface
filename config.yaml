@@ -1,0 +1,41 @@
+name: Tamal
+log_wandb: True
+
+project: dissertation
+run_name: att_lstm_1000
+maintainer: tomchow
+
+train: True
+test: True
+plot: True
+
+
+dataset:
+  filepath: Data/iv_data_nifty.csv
+  test_size: 0.3
+  n_lookback: 30
+  n_forecast: 1
+
+model:
+  n_features: 11
+  hidden_dim: 64
+  dropout: 0.25
+  save_path: weights/att_lstm_1000/
+
+training:
+  n_epochs: 1000
+  batch_size: 128
+  optimizer: Adam
+  loss: mse
+  lr: 0.001
+  clip_gradient: True
+  clip_gradient_value: 5.0
+  scheduler: cosine
+  scheduler_patience: 5
+  scheduler_min_lr: 0.00001
+  scheduler_factor: 0.5
+  early_stopping: True
+  early_stopping_patience: 5
+  early_stopping_min_delta: 0.0001
+  
+
