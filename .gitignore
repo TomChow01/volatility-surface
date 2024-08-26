@@ -2,3 +2,4 @@ Data/*.csv
 *.Identifier
 __pycache__
 wandb
+*ipynb
