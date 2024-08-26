@@ -1,6 +1,7 @@
 from tqdm import tqdm
 import torch
 import torch.nn as nn
+from utils import *
 
 import numpy as np
 import wandb
@@ -29,14 +30,18 @@ def test(cfg, model, test_loader, device):
             loss = loss_fn(y_pred, y_batch)
             test_loss += loss.item()
             
-            y_pred = y_pred.detach().cpu()
-            y_batch = y_batch.detach().cpu()
+            y_pred = y_pred.detach().cpu().numpy()[0]
+            y_batch = y_batch.detach().cpu().numpy()[0]
             # print(y_pred, y_batch)
             
             y_preds.append(y_pred)
             y_true.append(y_batch)
         
+        mda = mean_directional_accuracy(y_true, y_preds)
         test_loss /= len(test_loader)
+        # print('y_preds',y_preds[:10])
+        print('MDA', mda)
+        wandb.log({'Test MDA': mda})
         wandb.log({'Test Loss': np.sqrt(test_loss)})
         print(f'Test Loss: {test_loss:.4f}')
         return y_true, y_preds

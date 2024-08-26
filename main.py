@@ -51,7 +51,7 @@ def main(config_file: str = None):
     
     ## ----------------------------------------------------------------------------------------------------------------------------
     # Train Test Split
-    ##(window size, time steps, features))
+    ##(lookback window, time steps, features))
     X_train, y_train = create_dataset(train_data, n_lookback=cfg['dataset']['n_lookback'], n_forecast=cfg['dataset']['n_forecast'])
     X_val, y_val = create_dataset(val_data, n_lookback=cfg['dataset']['n_lookback'], n_forecast=cfg['dataset']['n_forecast'])
     X_test, y_test = create_dataset(test_data, n_lookback=cfg['dataset']['n_lookback'], n_forecast=cfg['dataset']['n_forecast'])
@@ -63,7 +63,7 @@ def main(config_file: str = None):
     # Model
     n_features = X_train.shape[-1]
     # Define the model
-    model = AttLSTM(cfg)#Model(cfg)
+    model = AttLSTM(cfg) #Model(cfg)
 
 
     ## ----------------------------------------------------------------------------------------------------------------------------
@@ -82,7 +82,7 @@ def main(config_file: str = None):
     # Testing
     if cfg['test']:
         # trainer.test_model(test_loader)
-        model = AttLSTM(cfg) #Model(cfg)
+        model = AttLSTM(cfg) #Model(cfg) # AttLSTM(cfg) #
         model.to(device)
         model.load_state_dict(torch.load(os.path.join(cfg['model']['save_path'], 'best_model.pt')))
         y_true, y_pred = test(cfg, model, test_loader, device)
@@ -94,7 +94,6 @@ def main(config_file: str = None):
         
     
     plot_surface(test_iv_df, pred_iv_df, n = 3)
-    # TODO: Take it inside utils
     
     wandb.finish()
     

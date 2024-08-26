@@ -5,7 +5,9 @@ project: dissertation
 run_name: att_lstm_1000
 maintainer: tomchow
 
-train: True
+
+create_new_data: True
+train: False
 test: True
 plot: True
 
@@ -20,7 +22,7 @@ model:
   n_features: 11
   hidden_dim: 64
   dropout: 0.25
-  save_path: weights/att_lstm_1000/
+  save_path: weights/att_lstm/
 
 training:
   n_epochs: 1000

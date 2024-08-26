@@ -150,6 +150,48 @@ def convert_to_hourly_option(df):
     return hourly_df
 
 
+def mean_directional_accuracy(y_true, y_pred):
+    """
+    Calculates the mean directional accuracy (MDA) for two time series 
+
+    Args:
+        y_true (numpy.ndarray): Array of true labels (0 or 1).
+        y_pred (numpy.ndarray): Array of predicted labels (0 or 1).
+
+    Returns:
+        float: Mean directional accuracy.
+    """
+    # print(y_true.shape, y_pred.shape)
+    avg_mda = 0
+    for i in range(len(y_true[0])):
+        actual = np.array(y_true)[:, i]
+        predicted = np.array(y_pred)[:, i]
+        # predicted = np.append(0, np.array(y_pred)[:, i][:-1])
+        # print(actual.shape, predicted.shape)
+        
+        # calculate the signs of the differences between consecutive values
+        actual_diff = np.diff(actual)
+        actual_signs = np.sign(actual_diff)
+        
+        predicted_diff = predicted - np.roll(actual, 1)
+        predicted_diff = predicted_diff[1:]
+        # predicted_diff = np.diff(predicted)
+        predicted_signs = np.sign(predicted_diff) ##TODO: correct it
+        print(actual_signs.shape, predicted_signs.shape)
+        
+        # count the number of times the signs are the same
+        num_correct = np.sum(actual_signs == predicted_signs)
+        
+        # calculate the MDA value
+        mda = num_correct / (len(actual) - 1)
+        avg_mda += mda
+    avg_mda /= len(y_true[0])
+    
+    return avg_mda
+    
+
+
+
 def plot_results(test_iv_df, pred_iv_df, scaler=None, n_features=11):
     if scaler:
         y_pred = scaler.inverse_transform(np.array(y_pred).reshape(-1, n_features))
