@@ -1,0 +1,7 @@
+start_date: '2019-02-11'
+ce_path: Data/CE.csv
+pe_path: Data/PE.csv
+spot_path: Data/NIFTY_SPOT.csv
+smile_window: 11
+sampling_interval: 15 #Time in Minutes
+save_path: Data/test_data.csv
