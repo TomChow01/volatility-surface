@@ -6,6 +6,7 @@ import torch
 import numpy as np
 import matplotlib.pyplot as plt
 import wandb
+from sklearn.metrics import mean_absolute_percentage_error
 
 
 def CalculateStrikes(price, window=7):
@@ -149,6 +150,36 @@ def convert_to_hourly_option(df):
 
     return hourly_df
 
+# def mean_directional_accuracy(actual, predicted):
+#     """
+#     Calculates the Mean Directional Accuracy (MDA) for two time series.
+    
+#     Parameters:
+#     actual (array-like): The actual values for the time series.
+#     predicted (array-like): The predicted values for the time series.
+    
+#     Returns:
+#     float: The MDA value.
+#     """
+#     actual = np.array(actual)[:, 5]
+#     predicted = np.array(predicted)[:, 5]
+#     print('new_mda')
+    
+#     # calculate the signs of the differences between consecutive values
+#     actual_diff = np.diff(actual)
+#     actual_signs = np.sign(actual_diff)
+#     predicted_diff = np.diff(predicted)
+#     predicted_signs = np.sign(predicted_diff)
+#     print('Actual vs Predicted', actual_signs, predicted_signs)
+    
+#     # count the number of times the signs are the same
+#     num_correct = np.sum(actual_signs == predicted_signs)
+    
+#     # calculate the MDA value
+#     mda = num_correct / (len(actual) - 1)
+    
+    # return mda
+
 
 def mean_directional_accuracy(y_true, y_pred):
     """
@@ -163,6 +194,7 @@ def mean_directional_accuracy(y_true, y_pred):
     """
     # print(y_true.shape, y_pred.shape)
     avg_mda = 0
+    mda_dict = dict()
     for i in range(len(y_true[0])):
         actual = np.array(y_true)[:, i]
         predicted = np.array(y_pred)[:, i]
@@ -176,18 +208,36 @@ def mean_directional_accuracy(y_true, y_pred):
         predicted_diff = predicted - np.roll(actual, 1)
         predicted_diff = predicted_diff[1:]
         # predicted_diff = np.diff(predicted)
-        predicted_signs = np.sign(predicted_diff) ##TODO: correct it
-        print(actual_signs.shape, predicted_signs.shape)
+        predicted_signs = np.sign(predicted_diff) 
+        # print(actual_signs.shape, predicted_signs.shape)
         
         # count the number of times the signs are the same
         num_correct = np.sum(actual_signs == predicted_signs)
         
         # calculate the MDA value
         mda = num_correct / (len(actual) - 1)
+        # print(i, mda)
+        mda_dict[f'Strike_{i}'] = mda
         avg_mda += mda
     avg_mda /= len(y_true[0])
+    mda_dict['avg_mda'] = avg_mda
+    return avg_mda, mda_dict
+
+
+def my_mape(actual, predicted):
+    actual = np.array(actual)
+    predicted = np.array(predicted)
     
-    return avg_mda
+    # avg_mape = 0
+    # for i in range(len(actual[0])):
+    #     mape = mean_absolute_percentage_error(actual[:, i], predicted[:, i]) #np.mean(np.abs((actual[:, i] - predicted[:, i]) / actual[:, i])) * 100
+    #     avg_mape += mape
+    
+    mape = mean_absolute_percentage_error(actual, predicted)
+    return mape
+    
+    
+    # return np.mean(np.abs((actual - predicted) / actual)) * 100
     
 
 
@@ -262,7 +312,8 @@ def plot_surface(test_iv_df, pred_iv_df, n = 3):
             wandb.log({f"Implied Volatility Surface {expiry}": wandb.Image(fig)})
 
             # Show the plot
-            plt.show()
+            plt.savefig(f'surface_{i}.png')
+            # plt.show()
 
 
 

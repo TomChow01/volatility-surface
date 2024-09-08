@@ -3,3 +3,7 @@ Data/*.csv
 __pycache__
 wandb
 *ipynb
+weights
+*.png
+rough.py 
+ 

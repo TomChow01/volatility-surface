@@ -1,11 +1,15 @@
 import matplotlib.pyplot as plt
 from model import *
+# from utils import mape
+from torchmetrics.regression import MeanAbsolutePercentageError
 from tqdm import tqdm
 import numpy as np
 import torch
 import torch.optim as optim
 import wandb
 import os
+
+from sklearn.metrics import mean_absolute_error, mean_absolute_percentage_error, mean_squared_error, r2_score
 
 
 
@@ -27,6 +31,10 @@ class Trainer:
             self.loss_fn = nn.MSELoss()
         if self.cfg['training']['loss'] == 'mae':
             self.loss_fn = nn.L1Loss()
+        
+        # self.mse = nn.MSELoss()
+        self.mae = nn.L1Loss()
+        self.mape = MeanAbsolutePercentageError()
             
         ## Scheduler
         if cfg['training']['scheduler'] == 'exponential':
@@ -61,7 +69,8 @@ class Trainer:
         #TODO: Early Stopping
         for epoch in range(1, self.cfg['training']['n_epochs']+1):
             self.model.train()
-            epoch_loss = 0
+            epoch_mse = 0
+            epoch_mae = 0
             
             ## Batchwise Training
             for X_batch, y_batch in tqdm(self.train_loader):
@@ -72,6 +81,7 @@ class Trainer:
                 y_pred = self.model(X_batch)
                 # print(y_pred.shape, y_batch.shape)
                 loss = self.loss_fn(y_pred, y_batch)
+                mae_loss = self.mae(y_pred, y_batch)
                 self.optimizer.zero_grad()
                 loss.backward()
                 
@@ -85,15 +95,18 @@ class Trainer:
                     nn.utils.clip_grad_value_(self.model.parameters(), clip_value=self.cfg['training']['clip_gradient_value'])
                 
                 self.optimizer.step()
-                epoch_loss += loss.item()
+                epoch_mse += loss.item()
+                epoch_mae += mae_loss.item()
             
             self.scheduler.step()
             wandb.log({'Learning Rate': self.optimizer.param_groups[0]['lr']})
                 
-            epoch_loss = np.sqrt(epoch_loss) #RMSE
-            train_losses.append(epoch_loss) #/len(self.train_loader))
-            wandb.log({'Train Loss': epoch_loss}) #/len(self.train_loader)})
-            print(f'Epoch {epoch} Loss (RMSE) {epoch_loss}')
+            epoch_rmse = np.sqrt(epoch_mse) / len(self.train_loader) #RMSE
+            epoch_mae = epoch_mae /len(self.train_loader)
+            train_losses.append(epoch_rmse)
+            wandb.log({'Train Loss': epoch_rmse}) #/len(self.train_loader)})
+            wandb.log({'Train Loss (MAE)': epoch_mae})
+            print(f'Epoch {epoch} Loss (RMSE | MAE) {epoch_rmse, epoch_mae}')
             
             # Validation every 10 epochs
             # if epoch % 10 == 0:
@@ -101,16 +114,27 @@ class Trainer:
                 
               
             self.model.eval()
-            val_loss = 0
+            val_mse, val_mae, val_mape = 0, 0, 0
+            val_gts, val_preds = [], []
             with torch.no_grad():
                 for X_batch, y_batch in self.val_loader:
                     X_batch = X_batch.to(self.device)
                     y_batch =  y_batch.to(self.device).squeeze(1)                                                                                    
                     y_pred = self.model(X_batch.to(self.device)) #.detach().cpu()
-                    val_loss += self.loss_fn(y_pred, y_batch).item()
                     
-                    test_loss = 0 #np.sqrt(loss_fn(y_pred, y_test.reshape(-1, 1)))
+                    val_gts.append(y_batch.detach().cpu().numpy())
+                    val_preds.append(y_pred.detach().cpu().numpy())
+                    
+                    val_mse += self.loss_fn(y_pred, y_batch).item()
+                    val_mae += self.mae(y_pred, y_batch).item()
+                    val_mape += self.mape(y_pred.detach().cpu(), y_batch.detach().cpu()).item()
+                    
+                    # test_loss = 0 #np.sqrt(loss_fn(y_pred, y_test.reshape(-1, 1)))
             
+            
+            val_gts, val_preds = np.concatenate(val_gts), np.concatenate(val_preds)
+            print('SKLEARN')
+            print(mean_squared_error(val_gts, val_preds), mean_absolute_error(val_gts, val_preds), mean_absolute_percentage_error(val_gts, val_preds), r2_score(val_gts, val_preds))
             # print(y_pred.shape, y_batch.shape)
             plt.figure(figsize=(10, 5))
             plt.plot(y_pred.detach().cpu().numpy()[16])
@@ -118,10 +142,11 @@ class Trainer:
             plt.legend(['y_pred', 'y_true'])
             plt.title('Epoch %d: Predictions vs. True Values' % epoch)
             wandb.log({'Predictions': wandb.Image(plt)})
-            val_losses.append(np.sqrt(val_loss)) #/len(self.train_loader))
-            wandb.log({'Val Loss': np.sqrt(val_loss)}) #/len(self.train_loader)})
-            test_losses.append(test_loss)
-            print("Epoch %d: val RMSE %.4f, test RMSE %.4f" % (epoch, val_loss, test_loss))
+            val_rmse = np.sqrt(val_mse)
+            val_losses.append(val_rmse) #/len(self.train_loader))
+            wandb.log({'Val MSE': val_mse/len(self.val_loader), 'Val RMSE': val_rmse/len(self.val_loader), 'Val MAE': val_mae/len(self.val_loader), 'Val MAPE': val_mape/len(self.val_loader)}) #/len(self.train_loader)})
+            # test_losses.append(test_loss)
+            print(f"Epoch {epoch} Val Losses: MSE {val_mse/len(self.val_loader)} | RMSE {val_rmse/len(self.val_loader)} | MAE {val_mae} | MAPE{val_mape/len(self.val_loader)}")
             
             if val_losses[-1] < min_val_loss:
                 min_val_loss = val_losses[-1]

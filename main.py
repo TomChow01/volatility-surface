@@ -46,6 +46,8 @@ def main(config_file: str = None):
     
     ## ----------------------------------------------------------------------------------------------------------------------------    
     # Load Data
+    # (train_data, train_dates, val_data, val_dates, test_data, test_dates), scaler = load_data(filepath = cfg['dataset']['filepath'],
+    #                                                            test_size = cfg['dataset']['test_size'], interpolation=cfg['dataset']['interpolation'], interpolation_axis=cfg['dataset']['interpolation_axis'])
     (train_data, train_dates, val_data, val_dates, test_data, test_dates), scaler = load_data(filepath = cfg['dataset']['filepath'],
                                                                test_size = cfg['dataset']['test_size'])
     
@@ -59,11 +61,14 @@ def main(config_file: str = None):
     print(f'Train Data {X_train.shape, y_train.shape} Val Data {X_val.shape, y_val.shape} Test Data {X_test.shape, y_test.shape}')
     
     
-    ### ----------------------------------------------------------------------------------------------------------------------------
+    ## ----------------------------------------------------------------------------------------------------------------------------
     # Model
     n_features = X_train.shape[-1]
     # Define the model
-    model = AttLSTM(cfg) #Model(cfg)
+    if cfg['model']['type'] == 'simple_lstm':
+        model = Model(cfg)
+    elif cfg['model']['type'] == 'att_lstm':
+        model = AttLSTM(cfg) #Model(cfg)
 
 
     ## ----------------------------------------------------------------------------------------------------------------------------
@@ -79,13 +84,17 @@ def main(config_file: str = None):
         trainer = Trainer(cfg, model, train_loader, val_loader, device)
         trainer.train()
     
-    # Testing
+    ## Testing
     if cfg['test']:
         # trainer.test_model(test_loader)
-        model = AttLSTM(cfg) #Model(cfg) # AttLSTM(cfg) #
+        if cfg['model']['type'] == 'simple_lstm':
+            model = Model(cfg)
+        elif cfg['model']['type'] == 'att_lstm':
+            model = AttLSTM(cfg) #Model(cfg)
+        # model = AttLSTM(cfg) #Model(cfg) # AttLSTM(cfg) #
         model.to(device)
         model.load_state_dict(torch.load(os.path.join(cfg['model']['save_path'], 'best_model.pt')))
-        y_true, y_pred = test(cfg, model, test_loader, device)
+        y_true, y_pred = test(cfg, model, test_loader, device, scaler=None)
         y_pred = scaler.inverse_transform(np.array(y_pred).reshape(-1, n_features))
         y_true = scaler.inverse_transform(np.array(y_true).reshape(-1, n_features))
         test_iv_df = pd.concat([test_dates[cfg['dataset']['n_lookback']:].reset_index(drop=True), pd.DataFrame(np.array(y_true).reshape(-1, n_features)).reset_index(drop=True)], axis=1)
@@ -99,5 +108,7 @@ def main(config_file: str = None):
     
     
 if __name__ == '__main__':
+    ## TODO: MSE, MAE, MAPE
+    ## TODO: ARCH, GARCH and Auto-Regression
+    ## TODO: EDA
     main('config.yaml')
-    
