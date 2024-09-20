@@ -180,6 +180,7 @@ def create_data(data_config_path):
 
     iv_df.head()
     iv_df.to_csv(data_config['save_path'], index=False)
+    print('Data saved to ', data_config['save_path'])
     
 
 

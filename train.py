@@ -66,7 +66,6 @@ class Trainer:
         min_val_loss = np.inf
         
         #TODO: In-sample Prediction
-        #TODO: Early Stopping
         for epoch in range(1, self.cfg['training']['n_epochs']+1):
             self.model.train()
             epoch_mse = 0
@@ -106,7 +105,7 @@ class Trainer:
             train_losses.append(epoch_rmse)
             wandb.log({'Train Loss': epoch_rmse}) #/len(self.train_loader)})
             wandb.log({'Train Loss (MAE)': epoch_mae})
-            print(f'Epoch {epoch} Loss (RMSE | MAE) {epoch_rmse, epoch_mae}')
+            print(f'Epoch {epoch} Training Loss (RMSE | MAE) {epoch_rmse, epoch_mae}')
             
             # Validation every 10 epochs
             # if epoch % 10 == 0:
@@ -119,7 +118,7 @@ class Trainer:
             with torch.no_grad():
                 for X_batch, y_batch in self.val_loader:
                     X_batch = X_batch.to(self.device)
-                    y_batch =  y_batch.to(self.device).squeeze(1)                                                                                    
+                    y_batch =  y_batch.to(self.device) #.squeeze(1)                                                                                    
                     y_pred = self.model(X_batch.to(self.device)) #.detach().cpu()
                     
                     val_gts.append(y_batch.detach().cpu().numpy())
@@ -133,8 +132,8 @@ class Trainer:
             
             
             val_gts, val_preds = np.concatenate(val_gts), np.concatenate(val_preds)
-            print('SKLEARN')
-            print(mean_squared_error(val_gts, val_preds), mean_absolute_error(val_gts, val_preds), mean_absolute_percentage_error(val_gts, val_preds), r2_score(val_gts, val_preds))
+            # print('SKLEARN')
+            # print(mean_squared_error(val_gts, val_preds), mean_absolute_error(val_gts, val_preds), mean_absolute_percentage_error(val_gts, val_preds), r2_score(val_gts, val_preds))
             # print(y_pred.shape, y_batch.shape)
             plt.figure(figsize=(10, 5))
             plt.plot(y_pred.detach().cpu().numpy()[16])
@@ -142,13 +141,23 @@ class Trainer:
             plt.legend(['y_pred', 'y_true'])
             plt.title('Epoch %d: Predictions vs. True Values' % epoch)
             wandb.log({'Predictions': wandb.Image(plt)})
+            
             val_rmse = np.sqrt(val_mse)
+            
+            
+            val_mse /= len(self.val_loader)
+            val_rmse /= len(self.val_loader)
+            val_mae /= len(self.val_loader)
+            val_mape /= len(self.val_loader)
+            
+            
             val_losses.append(val_rmse) #/len(self.train_loader))
-            wandb.log({'Val MSE': val_mse/len(self.val_loader), 'Val RMSE': val_rmse/len(self.val_loader), 'Val MAE': val_mae/len(self.val_loader), 'Val MAPE': val_mape/len(self.val_loader)}) #/len(self.train_loader)})
+            wandb.log({'Val MSE': val_mse, 'Val RMSE': val_rmse, 'Val MAE': val_mae, 'Val MAPE': val_mape}) #/len(self.train_loader)})
             # test_losses.append(test_loss)
-            print(f"Epoch {epoch} Val Losses: MSE {val_mse/len(self.val_loader)} | RMSE {val_rmse/len(self.val_loader)} | MAE {val_mae} | MAPE{val_mape/len(self.val_loader)}")
+            print(f"Epoch {epoch} Val Losses: MSE {val_mse} | RMSE {val_rmse} | MAE {val_mae} | MAPE{val_mape}")
             
             if val_losses[-1] < min_val_loss:
+                counter = 0
                 min_val_loss = val_losses[-1]
                 torch.save(self.model.state_dict(), os.path.join(self.cfg['model']['save_path'], 'best_model.pt'))
                 
@@ -158,6 +167,18 @@ class Trainer:
                 # 'optimizer_state_dict': self.optimizer.state_dict(),
                 # 'loss': min_val_loss,
                 # }, self.cfg['model']['save_path'])
+            else:
+                counter += 1
+                print('Model not saved. Validation loss did not improve from %.4f.' %min_val_loss)
+                if counter == self.cfg['training']['early_stopping_patience']:
+                    print('Early stopping criteria reached. Breaking from training loop.')
+                    # torch.save({
+                    # 'epoch': epoch+1,
+                    # 'model_state_dict': model.state_dict(),
+                    # 'optimizer_state_dict': optimizer.state_dict(),
+                    # 'loss': total_val_loss,
+                    # }, cfg['model']['save_path'].split('.')[0] + '_last.pth')
+                    break
             
         torch.save(self.model.state_dict(), os.path.join(self.cfg['model']['save_path'], 'last_model.pt'))
         

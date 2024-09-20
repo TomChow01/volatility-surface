@@ -2,7 +2,7 @@ name: Tamal
 log_wandb: True
 
 project: dissertation
-run_name: att_lstm_test
+run_name: simple_lstm
 maintainer: tomchow
 
 
@@ -11,6 +11,9 @@ train: False
 test: True
 plot: True
  
+
+test: 
+  result_path: 'outputs/results/'
 
 dataset:
   filepath: Data/iv_data_nifty.csv
@@ -21,14 +24,15 @@ dataset:
   n_forecast: 1
 
 model:
-  type: att_lstm #simple_lstm, att_lstm
+  type: simple_lstm #simple_lstm, att_lstm
+  n_layers: 1
   n_features: 11
   hidden_dim: 64
   dropout: 0.25
-  save_path: weights/att_lstm/
+  save_path: weights/simple_lstm/
 
 training:
-  n_epochs: 10
+  n_epochs: 1000
   batch_size: 128
   optimizer: Adam
   loss: mse
@@ -40,7 +44,7 @@ training:
   scheduler_min_lr: 0.00001
   scheduler_factor: 0.5
   early_stopping: True
-  early_stopping_patience: 5
+  early_stopping_patience: 30
   early_stopping_min_delta: 0.0001
   
 

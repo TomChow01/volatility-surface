@@ -49,11 +49,37 @@ def create_dataset(dataset, n_lookback, n_forecast):
         dataset: A numpy array of time series, first dimension is the time steps
         n_lookback: Size of window for prediction
     """
+    # print('dataset', dataset.shape)
     X, y = [], []
-    for i in range(len(dataset)-n_lookback): 
-        feature = dataset[i:i+n_lookback]
+    for i in range(len(dataset)): 
+        
+        end_ix = i + n_lookback
+        out_end_ix = end_ix + n_forecast
+        if out_end_ix > len(dataset):
+            break       
+        feature = dataset[i:end_ix]
+        # print('feature',feature.shape)
         # target = dataset[i+1:i+n_lookback+1]
-        target = dataset[i+n_lookback:i+n_lookback+n_forecast]
+        target = dataset[end_ix:out_end_ix]
+        # print(target.shape)
         X.append(feature)
         y.append(target)
+        # break
     return torch.tensor(X), torch.tensor(y)
+
+
+# # split a multivariate sequence into samples
+# def split_sequences(sequences, n_steps_in, n_steps_out):
+#     X, y = list(), list()
+#     for i in range(len(sequences)):
+#         # find the end of this pattern
+#         end_ix = i + n_steps_in
+#         out_end_ix = end_ix + n_steps_out
+#         # check if we are beyond the dataset
+#         if out_end_ix > len(sequences):
+#             break
+#         # gather input and output parts of the pattern
+#         seq_x, seq_y = sequences[i:end_ix, :], sequences[end_ix:out_end_ix, :]
+#         X.append(seq_x)
+#         y.append(seq_y)
+#     return array(X), array(y)

@@ -75,7 +75,7 @@ def main(config_file: str = None):
     # Dataloaders
     train_loader = DataLoader(TensorDataset(X_train, y_train), shuffle=True, batch_size=cfg['training']['batch_size'])
     val_loader = DataLoader(TensorDataset(X_val, y_val), shuffle=True, batch_size=cfg['training']['batch_size'])
-    test_loader = DataLoader(TensorDataset(X_test, y_test), shuffle=False, batch_size=1)
+    test_loader = DataLoader(TensorDataset(X_test, y_test), shuffle=False, batch_size=128)
 
     
     ## ----------------------------------------------------------------------------------------------------------------------------
@@ -93,22 +93,22 @@ def main(config_file: str = None):
             model = AttLSTM(cfg) #Model(cfg)
         # model = AttLSTM(cfg) #Model(cfg) # AttLSTM(cfg) #
         model.to(device)
+        print(f'Loading model from: {os.path.join(cfg['model']['save_path'], 'best_model.pt')}')
         model.load_state_dict(torch.load(os.path.join(cfg['model']['save_path'], 'best_model.pt')))
         y_true, y_pred = test(cfg, model, test_loader, device, scaler=None)
+        
         y_pred = scaler.inverse_transform(np.array(y_pred).reshape(-1, n_features))
         y_true = scaler.inverse_transform(np.array(y_true).reshape(-1, n_features))
         test_iv_df = pd.concat([test_dates[cfg['dataset']['n_lookback']:].reset_index(drop=True), pd.DataFrame(np.array(y_true).reshape(-1, n_features)).reset_index(drop=True)], axis=1)
         pred_iv_df = pd.concat([test_dates[cfg['dataset']['n_lookback']:].reset_index(drop=True), pd.DataFrame(np.array(y_pred).reshape(-1, n_features)).reset_index(drop=True)], axis=1)
-        plot_results(test_iv_df, pred_iv_df)
+        plot_results(test_iv_df, pred_iv_df, model=cfg['model']['type'], save_path= 'outputs/figures/' + cfg['run_name'] + '.png')
         
     
-    plot_surface(test_iv_df, pred_iv_df, n = 3)
+    plot_surface(test_iv_df, pred_iv_df, model=cfg['model']['type'], n = 1, save_path= 'outputs/figures/' + cfg['run_name'] + '.png')
     
     wandb.finish()
     
     
 if __name__ == '__main__':
-    ## TODO: MSE, MAE, MAPE
-    ## TODO: ARCH, GARCH and Auto-Regression
     ## TODO: EDA
     main('config.yaml')

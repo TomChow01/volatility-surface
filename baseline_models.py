@@ -21,6 +21,7 @@ def train_var_model(train_data, max_lag=1):
 def train_vecm_model(train_data, coint_rank=1, max_lag=1):
     model = VECM(train_data, k_ar_diff=max_lag, coint_rank=coint_rank)
     results = model.fit()
+    
     return results
 
 def forecast_var_model(model, last_observations, steps=1):
@@ -28,7 +29,7 @@ def forecast_var_model(model, last_observations, steps=1):
     return forecast_data
 
 def forecast_vecm_model(model, last_observations, steps=1):
-    forecast_data = model.predict(steps=steps, alpha=last_observations)
+    forecast_data = model.predict(steps=steps) #, alpha=last_observations
     return forecast_data
 
 def test_models(test_data, lookback=30, max_lag=1):
@@ -36,7 +37,7 @@ def test_models(test_data, lookback=30, max_lag=1):
     n_test_samples = n_samples - lookback
     
     var_forecasts = []
-    # vecm_forecasts = []
+    vecm_forecasts = []
     
     for i in range(n_test_samples):
         test_subset = test_data[i:i+lookback]
@@ -48,14 +49,14 @@ def test_models(test_data, lookback=30, max_lag=1):
         var_forecasts.append(var_forecast)
         
         # Train VECM model
-        # # vecm_model = train_vecm_model(test_subset, coint_rank=1, max_lag=max_lag)
-        # # # vecm_forecast = forecast_vecm_model(vecm_model, last_observations, steps=1)
-        # # vecm_forecasts.append(vecm_forecast)
+        # vecm_model = train_vecm_model(test_subset, coint_rank=1, max_lag=max_lag)
+        # vecm_forecast = forecast_vecm_model(vecm_model, last_observations, steps=1)
+        # vecm_forecasts.append(vecm_forecast)
     
     var_forecasts = np.array(var_forecasts).reshape(n_test_samples, n_features)
     # vecm_forecasts = np.array(vecm_forecasts).reshape(n_test_samples, n_features)
     
-    return var_forecasts #vecm_forecasts
+    return var_forecasts #, vecm_forecasts
 
 if __name__ == '__main__':
     # Assuming you have your test data in the variable 'test_data' with shape (6030, 11)
@@ -124,6 +125,16 @@ if __name__ == '__main__':
     y_pred = np.array(y_pred).reshape(-1, n_features)
     y_true = np.array(y_true).reshape(-1, n_features)
     
+    y_pred = scaler.inverse_transform(np.array(y_pred).reshape(-1, n_features))
+    y_true = scaler.inverse_transform(np.array(y_true).reshape(-1, n_features))
+    test_iv_df = pd.concat([test_dates[cfg['dataset']['n_lookback']:].reset_index(drop=True), pd.DataFrame(np.array(y_true).reshape(-1, n_features)).reset_index(drop=True)], axis=1)
+    pred_iv_df = pd.concat([test_dates[cfg['dataset']['n_lookback']:].reset_index(drop=True), pd.DataFrame(np.array(y_pred).reshape(-1, n_features)).reset_index(drop=True)], axis=1)
+    
+    plot_results(test_iv_df, pred_iv_df, model='VAR', save_path='outputs/figures/' + 'vecm_4h' + '.png', noise = 2)
+    plot_surface(test_iv_df, pred_iv_df, model='VAR', n=1, save_path='outputs/figures/' + 'vecm_4h' + '.png', noise=2)
+    
+    # print(y_pred.shape, y_true.shape)
+    
     mse = mean_squared_error(np.array(y_true).reshape(-1, n_features), np.array(y_pred).reshape(-1, n_features))
     # mse = mean_squared_error(y_true, y_preds)
     rmse = np.sqrt(mse)
@@ -142,15 +153,15 @@ if __name__ == '__main__':
     
     print(f'Y true: {y_true.shape} Y pred {y_pred.shape}')
     
-    wandb.log({'Test MAE': mae})
-    wandb.log({'Test MDA': mda})
-    wandb.log({'Test MSE': mse})
-    wandb.log({'Test MAPE': mape})
-    wandb.log({'Test RMSE': rmse})
-    wandb.log({'Test R2': r2})
-    wandb.log(mda_dict)
+    # wandb.log({'Test MAE': mae})
+    # wandb.log({'Test MDA': mda})
+    # wandb.log({'Test MSE': mse})
+    # wandb.log({'Test MAPE': mape})
+    # wandb.log({'Test RMSE': rmse})
+    # wandb.log({'Test R2': r2})
+    # wandb.log(mda_dict)
     
-    plt.plot(y_pred[:, 5][:100])
-    plt.plot(y_true[:, 5][:100])
-    plt.legend(['Y pred', 'Y True'])
-    plt.savefig('test.png')
+    # plt.plot(y_pred[:, 5][:100])
+    # plt.plot(y_true[:, 5][:100])
+    # plt.legend(['Y pred', 'Y True'])
+    # plt.savefig('test.png')

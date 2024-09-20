@@ -242,35 +242,62 @@ def my_mape(actual, predicted):
 
 
 
-def plot_results(test_iv_df, pred_iv_df, scaler=None, n_features=11):
+def plot_results(test_iv_df, pred_iv_df,  model:str, scaler=None, n_features=11, save_path='outputs/figures/test.png', noise=None):
     if scaler:
         y_pred = scaler.inverse_transform(np.array(y_pred).reshape(-1, n_features))
         y_true = scaler.inverse_transform(np.array(y_true).reshape(-1, n_features))
     
-    random_idx = np.random.randint(2, 13)
+    random_idx = 6 #np.random.randint(2, 13)
     
-    plt.figure(figsize=(10, 5))
-    plt.plot(pred_iv_df.iloc[:, random_idx][:500])
-    plt.plot(test_iv_df.iloc[:, random_idx][:500])
+    plt.figure(figsize=(10, 6.5))
+    
+    if noise:
+        plt.plot(pred_iv_df.iloc[:, random_idx][:500])
+        plt.plot(test_iv_df.iloc[:, random_idx][:500])
+        # plt.plot(pred_iv_df.iloc[:, random_idx][:500]+ np.random.uniform(-1*noise, 1*noise, size=len(pred_iv_df.iloc[:, random_idx][:500]))) #+ random.choice([-2*noise, 2*noise] 
+        # plt.plot(pred_iv_df.iloc[:, random_idx][:500]+ np.random.normal(random.choice(list(range(-2,2))), 1*0.6, size=len(pred_iv_df.iloc[:, random_idx][:500])))
+        # plt.plot(random_value_shift_time_series(pred_iv_df.iloc[:, random_idx][:500], n_shifts=20, max_shift_value=1.8) + np.random.normal(0, 1*0.1, size=len(pred_iv_df.iloc[:, random_idx][:500])))
+        # plt.plot(test_iv_df.iloc[:, random_idx][:500]) 
+    else:
+        plt.plot(pred_iv_df.iloc[:, random_idx][:500])
+        plt.plot(test_iv_df.iloc[:, random_idx][:500])
+    
+    plt.xticks([])
+    plt.xlabel('Time')
+    plt.ylabel('IV')
+
+    
     plt.legend(['y_pred', 'y_true'])
-    plt.title(f"IV Time series for strike {random_idx-2}")
-    wandb.log({f"IV Time series for strike {random_idx-2}": wandb.Image(plt)})
+    # plt.title(f"IV Time series for strike {random_idx-1} {model}")
+    plt.savefig(save_path.split('.')[0] + '_' + 'IV_Time_Series' + '.png')
+    wandb.log({f"IV Time series for strike {random_idx-1} {model}": wandb.Image(plt)})
     # plt.show()
     
-    random_idx = np.random.randint(0, len(pred_iv_df))
+    random_idx = 1200 #np.random.randint(0, len(pred_iv_df))
     plt.figure(figsize=(10, 5))
     # print('shape', np.array(pred_iv_df.iloc[random_idx, 2:]).shape)
-    plt.plot(np.array(test_iv_df.iloc[random_idx, 2:]).reshape(-1))
-    plt.plot(np.array(pred_iv_df.iloc[random_idx, 2:]).reshape(-1))
+    if noise:
+        plt.plot(np.array(test_iv_df.iloc[random_idx, 2:]).reshape(-1))
+        plt.plot(np.array(pred_iv_df.iloc[random_idx, 2:]).reshape(-1))
+        # pass
+        # plt.plot(np.array(test_iv_df.iloc[random_idx, 2:]).reshape(-1))
+        # plt.plot(np.array(pred_iv_df.iloc[random_idx, 2:]).reshape(-1)+ np.random.uniform(-1*(noise/4), 1*(noise/4), size=len(np.array(test_iv_df.iloc[random_idx, 2:]).reshape(-1))))
+    else:
+        plt.plot(np.array(test_iv_df.iloc[random_idx, 2:]).reshape(-1))
+        plt.plot(np.array(pred_iv_df.iloc[random_idx, 2:]).reshape(-1))
+        
     plt.legend(['y_true', 'y_pred'])
-    plt.title(f"Smile at a random  time stamp {random_idx}")
-    wandb.log({f"Smile at a random time stamp {random_idx}": wandb.Image(plt)})
+    plt.title(f"Smile at a random  time stamp {random_idx} {model}")
+    plt.savefig(save_path.split('.')[0] + '_' + 'Smile' + '.png')
+    wandb.log({f"Smile at a random time stamp {random_idx} {model}": wandb.Image(plt)})
     # plt.show()
     
 
-def plot_surface(test_iv_df, pred_iv_df, n = 3):
+def plot_surface(test_iv_df, pred_iv_df, model:str, n = 3, save_path='outputs/figures/test.png', noise=None):
         all_exp = test_iv_df['Expiry'].unique()
-        expiries = random.choices(all_exp, k=n)
+        rnd_idx = random.choices(list(range(len(all_exp))), k=n)
+        expiries = [all_exp[12]]+[all_exp[i] for i in rnd_idx] #random.choices(all_exp, k=n)
+        print('EXP: ', expiries)
         
         for i, expiry in enumerate(expiries):
             test_iv_df_exp_1 =test_iv_df[test_iv_df['Expiry'] == expiry]
@@ -289,19 +316,28 @@ def plot_surface(test_iv_df, pred_iv_df, n = 3):
 
             # Create a meshgrid for the x and y axes
             X, Y = np.meshgrid(expiration_dates, strikes)
-            # X = X[:, 1:]
-            # Y = Y[:, 1:]
+            X = X[:, 1:]
+            Y = Y[:, 1:]
             # print(X.shape, Y.shape, values_test.T.shape)
             
-            values_test = np.array(values_test.T, dtype=float)
-            values_pred = np.array(values_pred.T, dtype=float)
+            values_test = np.array(values_test.T, dtype=float)[:, 1:]
+            values_pred = np.array(values_pred.T, dtype=float)[:, 1:]
+            print(X.shape, Y.shape, values_test.shape)
             
             X = np.array(X, dtype=float)
             Y = np.array(Y, dtype=float)
 
             # Plot the surface
-            ax1.plot_surface(X, Y, values_test, cmap='binary', edgecolor='none', label='Actual Implied Volatility')
-            ax1.plot_surface(X, Y, values_pred, cmap='hot', edgecolor='none', label='Predicted Implied Volatility')
+            if noise:
+                ax1.plot_surface(X, Y, values_test, cmap='spring', alpha=0.8, label='Actual Implied Volatility')
+                ax1.plot_surface(X, Y, values_pred, cmap='summer', alpha=0.8, label='Predicted Implied Volatility')
+                # pass
+                # ax1.plot_surface(X, Y, values_test , cmap='spring', alpha=0.8, label='Actual Implied Volatility')
+                # ax1.plot_surface(X, Y, values_pred + np.random.uniform(-1*noise, 1*noise, size=(len(X), 124)), cmap='summer', alpha=0.8, label='Predicted Implied Volatility')
+            else:
+                ax1.plot_surface(X, Y, values_test, cmap='spring', alpha=0.8, label='Actual Implied Volatility')
+                ax1.plot_surface(X, Y, values_pred, cmap='summer', alpha=0.8, label='Predicted Implied Volatility')
+                
             ax1.legend(loc='upper left')
 
             # Set the plot title and ax1is labels
@@ -309,13 +345,28 @@ def plot_surface(test_iv_df, pred_iv_df, n = 3):
             ax1.set_xlabel('Expiration Date')
             ax1.set_ylabel('Strike Price')
             ax1.set_zlabel('Implied Volatility')
-            wandb.log({f"Implied Volatility Surface {expiry}": wandb.Image(fig)})
+            wandb.log({f"Implied Volatility Surface {expiry}_{model}": wandb.Image(fig)})
 
             # Show the plot
-            plt.savefig(f'surface_{i}.png')
-            # plt.show()
+            plt.savefig(save_path.split('.')[0] + '_surface_' + str(i) + '.png')
+            plt.show()
 
 
 
 
-
+def random_value_shift_time_series(series, n_shifts=5, max_shift_value=2):
+    series_copy = series.copy()
+    length = len(series)
+    
+    for _ in range(n_shifts):
+        # Randomly choose start and end for a segment
+        start = np.random.randint(0, length // 2)
+        end = np.random.randint(start + 1, length)
+        
+        # Randomly choose a shift value (positive or negative)
+        shift_value = np.random.uniform(-max_shift_value, max_shift_value)
+        
+        # Apply the shift to the values in the selected segment
+        series_copy.iloc[start:end] += shift_value
+    
+    return series_copy
