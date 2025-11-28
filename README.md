@@ -4,6 +4,8 @@ Data Analysis for Dissertation Project
 Project Overview
 The main objective of this project is to explore the relationship between strike duration, industry sector, union membership, and other relevant variables. By analyzing historical strike data, we hope to identify patterns and trends that can inform labor policies and negotiations.
 
+Project Document: Thesis Final.pdf
+
 Data Sources
 The primary data source for this project is the Bureau of Labor Statistics, which provides comprehensive data on work stoppages, including strikes and lockouts, in the United States. Additional data sources may be used to supplement the analysis as needed.
 
